@@ -1,1 +1,192 @@
-Hello World
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8"/>
+  <script type="application/javascript">
+	
+	var canvas,canvasElement,player;
+	var playerBullets = [];
+	var keys = [];
+	var enemies = [];
+	var stars = [{x:50,y:30},{x:150,y:70},{x:300,y:60},{x:380,y:80},{x:40,y:130},{x:180,y:160},
+				{x:280,y:200},{x:20,y:220},{x:190,y:300},{x:210,y:360},{x:310,y:110},{x:330,y:210},
+				{x:320,y:370},{x:70,y:390},{x:230,y:230},{x:290,y:250},{x:100,y:300},{x:350,y:300},
+				{x:120,y:110},{x:90,y:190},{x:30,y:320},{x:150,y:230},{x:240,y:100},{x:270,y:330}];
+	var enemy = function () {
+	  this.active = true;
+	  this.x = Math.random() * 368;
+	  this.y = 0;		  
+	  this.step = Math.floor(Math.random() * 2) - 1;
+	  this.width = 32;
+	  this.height = 32;
+	  this.inBounds = function() {
+		return this.x >= -32 && this.x <= 400 && this.y >= 0 && this.y <= 400;
+	  };
+	  this.draw = function() {
+		canvas.drawImage(document.getElementById('alien'),this.x, this.y);
+	  };
+	  this.update = function() {
+		this.x += this.step;
+		this.y += 2;
+		this.active = this.active && this.inBounds();
+	  };
+	  this.explode = function() {
+		this.active = false;
+	  };
+	}
+	function collides(a, b) {
+	  return a.x < b.x + b.width &&
+			 a.x + a.width > b.x &&
+			 a.y < b.y + b.height &&
+			 a.y + a.height > b.y;
+	}
+	function handleCollisions() {
+	  playerBullets.forEach(function(bullet) {
+		enemies.forEach(function(enemy) {
+		  if (collides(bullet, enemy)) {
+			enemy.explode();
+			bullet.active = false;
+		  }
+		});
+	  });
+	  enemies.forEach(function(enemy) {
+		if (collides(enemy, player)) {
+		  enemy.explode();
+		  player.explode();
+		}
+	  });
+	}
+	function drawStar(x,y){
+	  canvas.save();
+	  canvas.fillStyle = '#fff';
+	  canvas.translate(x,y);
+	  canvas.beginPath()
+	  canvas.moveTo(2,0);
+	  for (var i=0;i<9;i++){
+		canvas.rotate(Math.PI/5);
+		if(i%2 == 0) {
+		  canvas.lineTo((2/0.525731)*0.200811,0);
+		} else {
+		  canvas.lineTo(2,0);
+		}
+	  }
+	  canvas.closePath();
+	  canvas.fill();
+	  canvas.restore();
+	}
+	function init() {
+		canvasElement = document.getElementById('canvas');
+		canvas = canvasElement.getContext('2d');
+		player = {
+		  active: true,	
+		  x: 184,
+		  y: 270,
+		  width: 32,
+		  height: 32,
+		  draw: function() {
+			canvas.drawImage(document.getElementById('ship'),this.x, this.y);
+		  },
+		  shoot: function() {
+			  var bulletPosition = this.midpoint();
+			  playerBullets.push(new bullet(bulletPosition.x,bulletPosition.y));
+		  },
+		  midpoint: function() {
+			  return {
+				x: this.x + this.width/2,
+				y: this.y + this.height/2
+			  };
+		  },
+		  explode: function() {
+			this.active = false;
+		  }
+		};
+		document.onkeydown = function(e) {
+			keys[e.keyCode] = true;			
+		};
+		document.onkeyup = function(e) {
+			keys[e.keyCode] = false;
+		};
+		var bullet = function (x,y) {
+		  this.x = x;
+		  this.y = y;
+		  this.active = true;
+		  this.width = 1;
+		  this.height = 1;
+		  this.color = "#FFF";
+		  this.inBounds = function() {
+			return this.x >= 0 && this.x <= 400 && this.y >= 0 && this.y <= 400;
+		  };
+		  this.draw = function() {
+			canvas.fillStyle = this.color;
+			canvas.fillRect(this.x, this.y, this.width, this.height);
+		  };
+		  this.update = function() {
+			this.y -= 5;
+			this.active = this.active && this.inBounds();
+		  };
+		}		
+		main();
+	}
+	
+	window.main = function () {
+		window.requestAnimationFrame( main );
+		canvas.clearRect(0, 0, 400, 400);
+		canvas.fillStyle = "#000";
+		canvas.fillRect(0, 0, 400, 400);
+		for(i in stars) {
+			drawStar(stars[i].x,stars[i].y);
+		}
+		if(player.active) {
+			if(keys[37]) {
+				player.x -= 5; 
+				if(player.x < 0) {
+					player.x = 0; 
+				}
+			} 
+			if(keys[39]) { 
+				player.x += 5;
+				if(player.x > 368) {
+					player.x = 368;
+				}
+			} 
+			if(keys[32]) {
+				player.shoot();
+			}
+		} else {
+			canvas.fillStyle = "#FFF";
+			canvas.font = "48px serif";
+			canvas.fillText("GAME OVER", 50, 150);
+		}
+		player.draw();
+		playerBullets.forEach(function(bullet,index) {
+			bullet.update();
+		});
+		playerBullets = playerBullets.filter(function(bullet) {
+			return bullet.active;
+		});		
+		enemies.forEach(function(enemy) {
+			enemy.update();
+		});
+		enemies = enemies.filter(function(enemy) {
+			return enemy.active;
+		});				
+		handleCollisions();
+		if(Math.random() < 0.1) {
+			enemies.push(new enemy());
+		}
+		playerBullets.forEach(function(bullet) {
+			bullet.draw();
+	    });
+		enemies.forEach(function(enemy) {
+			enemy.draw();
+		});		
+	};
+	
+  </script>
+ </head>
+ <body onload="init()" style="text-align:center;">
+   <canvas id="canvas" width="400" height="400"></canvas>
+   <img id="ship" src="alienblaster.png" width="32" height="32" style="display:none;">
+   <img id="alien" src="brainalien.png" width="32" height="32" style="display:none;">
+ </body>
+</html>
