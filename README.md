@@ -1,1 +1,1 @@
-html5 / canvas demo game
+html5/canvas demo game
